@@ -6,6 +6,10 @@ format:
 editor: visual
 ---
 
+## Goal
+
+Find the cheapest real estate at high altitudes
+
 ## Redfin data
 
 I used the https://www.redfin.com/news/data-center/ to obtain county-level data on sale prices, and focused on the latest single-family residential sales.
@@ -65,5 +69,5 @@ list_of_highest$Elevation<-as.numeric(list_of_highest$Elevation)
 #display all rows
 options(tibble.print_max = Inf) # to show all the rows.
 
-dplyr::inner_join(list_of_highest,county_latest,by=c("County","ST")) %>%  dplyr::select(County,ST,Elevation,median_sale_price) %>% dplyr::group_by(County,ST) %>% dplyr::summarise(median_sale_price=median(median_sale_price,na.rm=TRUE),median_elevation = median(Elevation)) %>% dplyr::filter(!is.na(median_sale_price)) %>% dplyr::arrange(median_sale_price)
+dplyr::inner_join(list_of_highest,county_latest,by=c("County","ST")) %>%  dplyr::select(County,ST,Elevation,median_sale_price) %>% dplyr::group_by(County,ST) %>% dplyr::summarise(median_sale_price=median(median_sale_price,na.rm=TRUE),median_elevation = median(Elevation)) %>% dplyr::filter(!is.na(median_sale_price)) %>% dplyr::mutate(cost_per_foot_of_elevation = median_sale_price/median_elevation) %>% dplyr::arrange(cost_per_foot_of_elevation)
 ```
