@@ -1,0 +1,69 @@
+---
+title: "High Altitude"
+format: 
+   html:
+     df-print: paged
+editor: visual
+---
+
+## Redfin data
+
+I used the https://www.redfin.com/news/data-center/ to obtain county-level data on sale prices, and focused on the latest single-family residential sales.
+
+```{r}
+library(readr)
+library(rvest)
+county_market_tracker_tsv000 <- read_delim("county_market_tracker.tsv000.gz",
+delim = "\t", escape_double = FALSE,
+trim_ws = TRUE)
+```
+
+What is the lastest time period in the data? Filter for that time period.
+
+```{r}
+latest_period<-max(county_market_tracker_tsv000$period_end)
+county_latest<-dplyr::filter(county_market_tracker_tsv000, period_end==latest_period)%>%dplyr::filter(property_type=='Single Family Residential')
+names(county_latest)
+#split region column into county and county_state columns by comma
+county_latest<-county_latest%>%tidyr::separate(region, into=c("County", "cst"), sep=",")%>%dplyr::rename(ST = state_code)
+
+
+county_latest
+```
+
+```{r}
+#show all counties in Colorado as a test
+county_latest%>%dplyr::filter(ST=="CO")
+```
+
+## Wikipedia data
+
+Read in the main data table from this wikipedia page https://en.wikipedia.org/wiki/List_of_highest_communities_in_the_United_States
+
+```{r}
+wiki_url<-"https://en.wikipedia.org/wiki/List_of_highest_communities_in_the_United_States"
+wiki_html<-read_html(wiki_url)%>%html_table(fill=TRUE)
+
+list_of_highest<-wiki_html[[2]]
+
+
+#change "Jefferson CountyBoulder CountyGilpin County" to "Jefferson County" in County column
+list_of_highest$County<-gsub("Jefferson CountyBoulder CountyGilpin County","Jefferson County",list_of_highest$County)
+
+list_of_highest$County<-gsub("Jefferson CountyClear Creek County","Jefferson County",list_of_highest$County)
+
+names(list_of_highest)[6]<-"Population"
+names(list_of_highest)[7]<-"Elevation"
+
+#capture 10,926 feet (3,330 m) as 10926
+list_of_highest$Elevation<-gsub(" feet \\(.*","",list_of_highest$Elevation)
+list_of_highest$Elevation<-gsub(",","",list_of_highest$Elevation)
+list_of_highest$Elevation<-as.numeric(list_of_highest$Elevation)
+```
+
+```{r}
+#display all rows
+options(tibble.print_max = Inf) # to show all the rows.
+
+dplyr::inner_join(list_of_highest,county_latest,by=c("County","ST")) %>%  dplyr::select(County,ST,Elevation,median_sale_price) %>% dplyr::group_by(County,ST) %>% dplyr::summarise(median_sale_price=median(median_sale_price,na.rm=TRUE),median_elevation = median(Elevation)) %>% dplyr::filter(!is.na(median_sale_price)) %>% dplyr::arrange(median_sale_price)
+```
